@@ -26,6 +26,16 @@ function fail(message) {
   throw new Error(`kestrel hand-in: ${message}`);
 }
 
+// Clear a directory's contents without removing the directory itself: the
+// grader mounts /output as a volume, and removing a mount point fails
+// (EBUSY), so the directory itself must stay put and only its entries go.
+function clearDir(dir) {
+  mkdirSync(dir, { recursive: true });
+  for (const name of readdirSync(dir)) {
+    rmSync(join(dir, name), { recursive: true, force: true });
+  }
+}
+
 // Copy one tree, entries in sorted order so the walk is deterministic, and
 // count what it holds on the way so the caps are checked before the dossier.
 function copyTree(source, target, counts) {
@@ -70,8 +80,8 @@ function handIn() {
   }
 
   // A clean output directory: stale files from an earlier run must not leak in.
-  rmSync(out, { recursive: true, force: true });
-  mkdirSync(out, { recursive: true });
+  // Clear only the contents — never remove the output directory itself.
+  clearDir(out);
 
   const gameCounts = { entries: 0, bytes: 0 };
   copyTree(gameSource, join(out, 'game'), gameCounts);
